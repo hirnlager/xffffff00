@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        .NPC {
+            fill: purple;
+        }
+
+        svg {
+            border: 1px solid #000;
+        }
+
+.circle {
+    text-align: center; 
+    border: 1px solid #000;
+}
+    </style>
+</head>
+<body>
+    <ol start="0">
+        <li id="cEnergy"></li>
+    <li id="timer">Timer: 0</li>
+    <li id="currentLevel">Level: 1</li>
+    <li id="points">points: 0</li>
+    <button onclick="saveTimeToURL()">saveTimeToURL</button>
+    <button onclick="loadTimeFromURL()">loadTimeFromURL</button>
+    <button onclick="saveGame()">saveGame()</button>
+ 
+        <button onclick="saveGameToURL()">saveGameToURL()</button>
+        <button onclick="loadGameFromURL()">loadGameFromURL()</button>
+</ol>
+<hr>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512">
+    <rect id="rect0" x="192" y="64" fill="#00ff00" width="128" height="64" class="drag"><title>rect0</title></rect>
+    <rect id="rect0" x="64" y="256" fill="#00ff00" width="64" height="64" class="drag"></rect>
+    <circle id="circle0" cx="256" cy="256" r="32" fill="#00ff00" width="64" height="64" class="drag"></circle>
+    <!-- -->
+    <circle id="xid0" class="npcx" cx="64" cy="256" r="8" fill="red" stroke="#000" stroke-width="1" data-a="0xaaaa">
+        <title>xid0</title>
+    </circle>
+    <!-- -->
+    <circle id="xid1" class="npcx" cx="64" cy="50" r="8" fill="#0000ffff" stroke="#000" stroke-width="1" data-a="0xaaaa">
+        <title>xid1</title>
+    </circle>
+    <!-- Spieler -->
+    <circle id="id0" class="npc" cx="72" cy="264" r="8" fill="#ff0000ff" stroke="#000" stroke-width="1" data-a="0xaaaa">
+        <title>id0</title>
+    </circle>
+    
+    <!-- Spieler -->
+    <circle id="xid1" class="npc" cx="64" cy="80" r="8" fill="#0000ffff" stroke="#000" stroke-width="1" data-a="0xaaaa">
+        <title>xid1</title>
+    </circle>
+
+   <!-- <circle class="shild0" cx="64" cy="50" r="24" fill="none" stroke="red" stroke-width="2" stroke-opacity="0.5" /> -->
+
+    <circle id="id1" class="npc" cx="96" cy="50" r="8" fill="#0000ffff" stroke="#000" stroke-width="1" >
+        <title>id1</title>
+    </circle>
+    <!-- <circle class="shild1" cx="96" cy="50" r="32" fill="none" stroke="red" stroke-width="2" stroke-opacity="0.5" /> -->
+
+    <circle id="id2" class="npc" cx="128" cy="50" r="8" fill="#0000ffff" stroke="#000" stroke-width="1" >
+        <title>id2</title>
+    </circle>
+    <!-- <circle class="shild2" cx="128" cy="50" r="32" fill="none" stroke="red" stroke-width="2" stroke-opacity="0.5" /> -->
+
+    <circle id="id3" class="npc" cx="128" cy="150" r="8" fill="#0000ff" stroke="#000" stroke-width="1" >
+        <title>id3</title>
+    </circle>
+    <!-- <circle class="shild3" cx="128" cy="150" r="32" fill="none" stroke="red" stroke-width="2" stroke-opacity="0.5" /> -->
+
+    <!-- Rucksack-Anzeige -->
+    <text x="10" y="20" id="backpack">Rucksack: </text>
+
+    <!-- Ressourcen -->
+    <circle id="holz0" cx="120" cy="120" r="16" fill="#00000010 class="res" data-type="energie" data-add="0.75">
+        <title>Holz: 0.75</title>
+    </circle>
+
+    <circle id="holz0" cx="100" cy="100" r="4" class="res" data-type="holz" data-add="0.1">
+        <title>Holz: 0.1</title>
+    </circle>
+    <circle id="stein0" cx="200" cy="200" r="4" class="res" data-type="stein" data-add="0.2">
+        <title>Stein: 0.2</title>
+    </circle>
+    <circle id="wasser0" cx="300" cy="100" r="4" class="res" data-type="wasser" data-add="0.25">
+        <title>Wasser: 0.25</title>
+    </circle>
+    <circle id="essen0" cx="150" cy="100" r="4" class="res" data-type="essen" data-add="0.5">
+        <title>Essen: 0.5</title>
+    </circle>
+    <!-- SVG-Mauspositionsanzeige -->
+    <text x="10" y="32" id="mousePosition" fill="black">Mausposition: x = 0, y = 0</text>
+</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256">
+    <rect id="rectb0" x="32" y="32" fill="#00ff00" width="32" height="32" class="drag"><title>rectb0</title></rect>
+   
+</svg>
+
+<!-- Spieleranzeige -->
+<p id="selectedpc">Aktuell ausgewählter Spieler: id1</p>
+<!-- <label for="pcSelect">Wähle deinen Spieler:</label> -->
+<select id="pcSelect" onchange="onchangepc(this)">
+  <option value="id1" selected>id1</option>
+  <option value="id2">id2</option>
+  <option value="id3">id3</option>
+</select>
+<script>
+    var points = 0;
+    svg = document.querySelector('svg');
+    ress = document.querySelectorAll('.res');
+    var pc = document.querySelector('.npc');
+    var shild = document.querySelector('.shild');
+    const backpack = document.getElementById('backpack');
+    const pcSpeed = 8;
+    const backpackContents = new Map(); 
+
+    calculatedist = (x1, y1, x2, y2) => 
+    {
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        return Math.sqrt(dx * dx + dy * dy);
+    };
+
+    showDialog=e=>{console.log(['showDialog: ',e])};
+
+    function addres(cx, cy, r, resType, resName, color, add) 
+    {
+        const newres = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        newres.setAttribute('cx', cx);
+        newres.setAttribute('cy', cy);
+        newres.setAttribute('r', r);
+        newres.setAttribute('class', 'res');
+        newres.setAttribute('data-type', resType);
+        newres.setAttribute('data-add', add);
+
+        if (color === '#ff0000ff') 
+        {
+            // newres.setAttribute('fill', '#ff0000ff');
+            newres.addEventListener('click', e => {
+                showDialog(`Du hast die rote Ressource ${resName} berührt!`);
+            });
+        }
+
+        // Füge ein title-Element hinzu, das die Hover-Info enthält
+        const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
+        title.textContent = resName;
+        newres.appendChild(title);
+        svg.appendChild(newres);
+    };
+
+    // Spielerbewegung
+    window.addEventListener('keydown', (event) => 
+    {
+        const pcX = parseFloat(pc.getAttribute('cx'));
+        const pcY = parseFloat(pc.getAttribute('cy'));
+        // const r = parseFloat(shild.getAttribute('r'));
+        const step = pcSpeed;
+
+        if (event.key === 'w') 
+        {
+            pc.setAttribute('cy', Math.max(10, pcY - step));
+            // shild.setAttribute('cy', Math.max(10, pcY - step));
+        }
+         else if (event.key === 's') 
+        {
+            pc.setAttribute('cy', Math.min(390, pcY + step));
+            // shild.setAttribute('cy', Math.min(390, pcY + step));
+        }
+         else if (event.key === 'a') 
+        {
+            pc.setAttribute('cx', Math.max(10, pcX - step));
+            // shild.setAttribute('cx', Math.max(10, pcX - step));
+        }
+         else if (event.key === 'd') 
+        {
+            pc.setAttribute('cx', Math.min(390, pcX + step));
+            // shild.setAttribute('cx', Math.min(390, pcX + step));
+        };
+
+        // Überprüfen Sie die Kollision mit den Ressourcen
+        ress.forEach(res => 
+        {
+            const resX = parseFloat(res.getAttribute('cx'));
+            const resY = parseFloat(res.getAttribute('cy'));
+            const resR = parseFloat(res.getAttribute('r'));
+            const pcX = parseFloat(pc.getAttribute('cx'));
+            const pcY = parseFloat(pc.getAttribute('cy'));
+            const pcR = parseFloat(pc.getAttribute('r'));
+            const dist = calculatedist(pcX, pcY, resX, resY);
+
+            if (dist <= pcR + resR) 
+            {
+                const resType = res.getAttribute('data-type');
+                const add = parseFloat(res.getAttribute('data-add'));
+                const amount = backpackContents.get(resType) || 0;
+                backpackContents.set(resType, amount + add);
+                // res.remove(); // Entfernen Sie die Ressource
+                updateBackpackDisplay();
+            }
+        })
+    });
+
+    // Rucksack aktualisieren
+    function updateBackpackDisplay() 
+    {
+        backpack.textContent = 'Rucksack: ';
+        backpackContents.forEach((value, key) => 
+        {
+            backpack.textContent += `${key}: ${ (value).toFixed()} `;
+        })
+    };
+
+    const getAllAttributes = el => el.getAttributeNames().reduce((obj, name) => (
+    {
+        ...obj,[name]: el.getAttribute(name)
+    }), {});
+
+    function onchangepc(selectElement) 
+    {
+        const selectedValue = selectElement.value;
+        pc = document.getElementById(''+selectedValue);
+        document.getElementById('selectedpc').innerHTML = 'Aktuell ausgewählter Spieler:' + selectedValue;
+        
+        
+    };
+
+    svg.addEventListener('mousemove', (event) => 
+    {
+        let txtEle = document.querySelector('#mousePosition'); // Verwende let, um die Variable zu deklarieren
+
+            if (!txtEle) 
+            {
+                txtEle = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                txtEle.setAttribute("x", 10);
+                txtEle.setAttribute("y", 32);
+                txtEle.setAttribute("fill", "black");
+                txtEle.setAttribute("id", "mousePosition");
+                svg.appendChild(txtEle);
+            }
+
+            const mouseX = event.clientX - svg.getBoundingClientRect().left;
+            const mouseY = event.clientY - svg.getBoundingClientRect().top;
+            const ressUnderMouse = Array.from(document.querySelectorAll('.res')).filter(res => {
+            const resX = parseFloat(res.getAttribute('cx'));
+            const resY = parseFloat(res.getAttribute('cy'));
+            const resR = parseFloat(res.getAttribute('r'));
+            return (
+                mouseX >= resX - resR &&
+                mouseX <= resX + resR &&
+                mouseY >= resY - resR &&
+                mouseY <= resY + resR
+            );
+        });
+
+        const resInfo = ressUnderMouse.map(res => {
+            const title = res.querySelector('title')?res.querySelector('title').textContent:'';
+            const type = res.getAttribute('data-type');
+            const amount = backpackContents.get(type) || 0;
+            return `${title} (${amount})`;
+        }).join(', '); 
+        txtEle.textContent = `Mausposition: x = ${mouseX}, y = ${mouseY}, `+(event.target.id);
+    });
+
+    // Funktion für die Animation der Spielerbewegung
+    function animatepcMovement(targetX, targetY) 
+    {
+        //const pc = document.querySelector('.npc');
+        const startX = parseFloat(pc.getAttribute('cx'));
+        const startY = parseFloat(pc.getAttribute('cy')); 
+        const startX0 = parseFloat(pc.getAttribute('cx'));
+        const startY0 = parseFloat(pc.getAttribute('cy'));
+        const duration = 1000; // Dauer  in Millisekunden
+
+        let startTime;
+
+        function step(timestamp) 
+        {
+            if (!startTime) 
+            {
+                startTime = timestamp
+            }
+            const progress = (timestamp - startTime) / duration
+            if (progress < 1) 
+            {
+                const newX = startX + (targetX - startX) * progress
+                const newY = startY + (targetY - startY) * progress
+                pc.setAttribute('cx', newX)
+                pc.setAttribute('cy', newY)
+                requestAnimationFrame(step);
+            } 
+            else 
+            {
+                pc.setAttribute('cx', targetX)
+                pc.setAttribute('cy', targetY)
+            }
+        }
+        requestAnimationFrame(step)
+    };
+
+    // Füge das Event-Listener für Doppelklick hinzu
+    svg.addEventListener('dblclick', (event) => 
+    {
+        const mouseX = event.clientX - svg.getBoundingClientRect().left;
+        const mouseY = event.clientY - svg.getBoundingClientRect().top;
+
+        // Rufe die Animation für die Spielerbewegung auf
+        animatepcMovement(mouseX, mouseY);
+    });
+
+    // Rufe die collectressInrds-Funktion alle Sekunde auf
+    function changepc() 
+    {
+        const pcSelect = document.getElementById("pcSelect");
+        const selectedpcIndex = parseInt(pcSelect.value);
+        // const pc = document.querySelector(".npc"); // Spieler-Element auswählen
+        shild = document.querySelector(".shild")[selectedpcIndex]; // Schild-Element auswählen
+
+    };
+
+    const collidedObjects = []; // Ein Array, um die kollidierenden Objekte zu speichern
+    collectressAutomatically = e => 
+    {
+
+        npcs = document.querySelectorAll('.npc');
+        n = npcs.length;
+        for(i=0;i<n;i++)
+        {
+            pc0 = (npcs[i]);       
+            const pcX = parseFloat(pc0.getAttribute("cx"));
+            const pcY = parseFloat(pc0.getAttribute("cy"));
+            const pcR = parseFloat(pc0.getAttribute("r"));
+            const collectrds = pcR; // Sammelradius um den Spieler
+
+            ress.forEach(res => 
+            {
+                const resX = parseFloat(res.getAttribute("cx"));
+                const resY = parseFloat(res.getAttribute("cy"));
+                const resR = parseFloat(res.getAttribute("r"));
+                const resType = res.getAttribute("data-type");
+                const add = parseFloat(res.getAttribute("data-add"));
+                const dist = calculatedist(pcX, pcY, resX, resY);
+
+                if (dist <= pcR + resR )
+                {
+                    // sammle Sammelradius der Ressource
+                    const amount = backpackContents.get(resType) || 0;
+                    backpackContents.set(resType, amount + add);
+                    points += add;
+                    // res.remove(); // Entferne die Ressource
+                    updateBackpackDisplay();
+                    checkLevelUp()
+                    updateCurrentLevel() 
+                    document.getElementById("points").innerHTML = points;
+                }
+            })
+        }
+    };
+
+const collidedElementsList = document.getElementById('collidedElements');
+const collidedElements = new Set(); // Ein Set, um die kollidierten Elemente zu speichern
+
+checkress = e => 
+{
+    ress.forEach(res => 
+    {
+        const resX = parseFloat(res.getAttribute('cx'));
+        const resY = parseFloat(res.getAttribute('cy'));
+        const resR = parseFloat(res.getAttribute('r'));
+        const pcX = parseFloat(pc.getAttribute('cx'));
+        const pcY = parseFloat(pc.getAttribute('cy'));
+        const pcR = parseFloat(pc.getAttribute('r'));
+        const dist = calculatedist(pcX, pcY, resX, resY);
+
+        if (dist <= pcR + resR) 
+        {
+            const resType = res.getAttribute('data-type');
+            const add = parseFloat(res.getAttribute('data-add'));
+            const amount = backpackContents.get(resType) || 0;
+            backpackContents.set(resType, amount + add);
+            document.getElementById("points").innerHTML = (points += add);
+            checkLevelUp()
+            updateCurrentLevel() 
+            // res.remove(); // Entferne Ressource
+        }
+    });
+};
+
+let timerValue = 0;
+const timerElement = document.getElementById('timer');
+function updateTimer() {
+    checkress()
+    timerValue++;
+    timerElement.textContent = 'Timer: ' + timerValue;
+}
+// setInterval(updateTimer, 1000); 
+
+const levels = [
+    { level: 0, reqdPoints: 0 },
+    { level: 1, reqdPoints: 10 },
+    { level: 2, reqdPoints: 40},/*
+    { level: 3, reqdPoints: 30 },
+    { level: 4, reqdPoints: 40 },
+    { level: 5, reqdPoints: 50 },
+    */
+];
+const currentLevelElement = document.getElementById('currentLevel');
+
+checkLevelUp = e => 
+{
+    for (const levelInfo of levels) 
+    {
+        if (Math.floor(points) >= levelInfo.reqdPoints) 
+        {
+            lvl = levelInfo.level;
+        }
+    }
+}
+
+updateCurrentLevel=e=>{currentLevelElement.textContent = 'Level: ' + lvl;}
+
+    /* Drag & Drop-Funktion */
+    let isDragging = false;
+    let dragOffsetX, dragOffsetY;
+    let currentRect; // Das aktuell gezogene Rechteck
+    
+    // Eventlistener für Mausereignisse
+    svg.addEventListener('mousedown', (event) => 
+    {
+      if (event.target.tagName === 'rect' && event.target.classList.contains('drag')) 
+      {
+        isDragging = true;
+        currentRect = event.target;
+        // Berechne den Offset zwischen der Mausposition und der oberen linken Ecke des Rechtecks
+        const rectX = parseFloat(currentRect.getAttribute('x'));
+        const rectY = parseFloat(currentRect.getAttribute('y'));
+        dragOffsetX = event.clientX - rectX;
+        dragOffsetY = event.clientY - rectY;
+      }
+    });
+    
+    svg.addEventListener('mousedown', (event) => 
+    {
+      if ( (event.target.tagName === 'rect'||event.target.tagName === 'circle') && event.target.classList.contains('drag')) {
+        isDragging = true;
+        currentRect = event.target;
+        // Berechne den Offset zwischen der Mausposition und der oberen linken Ecke des Rechtecks
+        const rectX = parseFloat(currentRect.getAttribute('x'));
+        const rectY = parseFloat(currentRect.getAttribute('y'));
+        dragOffsetX = event.clientX - rectX;
+        dragOffsetY = event.clientY - rectY;
+      }
+    });
+    svg.addEventListener('mousemove', (event) => {
+        if(event.id){console.log(event.id)}
+      if (isDragging) {
+        // Berechne die neue Position des Rechtecks basierend auf der Mausposition und dem Offset
+        const newX = event.clientX - dragOffsetX;
+        const newY = event.clientY - dragOffsetY;
+        currentRect.setAttribute('x', newX);
+        currentRect.setAttribute('y', newY);
+      }
+    });
+    
+    svg.addEventListener('mouseup', e => {
+      isDragging = false;
+      currentRect = null;
+    });
+    
+    // Verhindert, dass das Rechteck einen Text auswählt, während es gezogen wird
+    svg.addEventListener('selectstart', (event) => {
+      event.preventDefault();
+    });
+
+// 2. SVG-Element Event-Handler für das Drag & Drop 
+const secondSVG = document.querySelectorAll('svg')[1]; // 2. SVG-Element auswählen
+
+secondSVG.addEventListener('dragover', (event) => {
+  event.preventDefault();
+});
+
+secondSVG.addEventListener('drop', (event) => {
+  event.preventDefault();
+  const x = event.clientX - secondSVG.getBoundingClientRect().left;
+  const y = event.clientY - secondSVG.getBoundingClientRect().top;
+
+  console.log(`Element ${event} wurde bei x: ${x}, y: ${y} abgelegt`);
+});
+// addEventListener("contextmenu", (event) => { event.preventDefault();return});
+
+    saveTimeToURL = e => {
+    const currentTime = Math.floor(+new Date()/1e3);
+    const timeParam = `?time=${currentTime}`;
+    const newURL = window.location.pathname + timeParam;
+    window.history.pushState({}, document.title, newURL);
+    }
+
+    loadTimeFromURL = e => 
+    {
+        const queryString = window.location.search;
+        const urlParams = new URLSearchParams(queryString);
+        const timeParam = urlParams.get('time')*1e3;
+        
+        if (timeParam) 
+        {
+            const loadedTime = +new Date(timeParam);
+            document.getElementById('timer').innerHTML = 'Timer: ' + (loadedTime);
+            console.log({'loadedTime':loadedTime})
+            } 
+        }
+
+        moveNPCs = e => 
+        {
+        const npcs = document.querySelectorAll('.npcx');
+            getRandomCoordinate = (a, b) =>{return Math.floor(Math.random()*(b-a+1))+a};
+        npcs.forEach(npc => 
+        {
+            // Begrenze die Ziele innerhalb Bereichs
+            const targetX = getRandomCoordinate(64, 128);
+            const targetY = getRandomCoordinate(64, 256);
+
+            animateNPCMovement(npc, targetX, targetY);
+        });
+    }
+
+animateNPCMovement = (npc, targetX, targetY) => 
+{
+  const startX = parseFloat(npc.getAttribute('cx'));
+  const startY = parseFloat(npc.getAttribute('cy'));
+  const duration = 1000;
+
+  let startTime;
+
+  function step(ts) 
+  {
+    if (!startTime) {
+      startTime = ts;
+    }
+    const progress = (ts - startTime) / duration/6;
+    if (progress < 1) {
+      const newX = startX + (targetX - startX) * progress;
+      const newY = startY + (targetY - startY) * progress;
+      npc.setAttribute('cx', newX);
+      npc.setAttribute('cy', newY);
+      requestAnimationFrame(step);
+    } else {
+      npc.setAttribute('cx', targetX);
+      npc.setAttribute('cy', targetY);
+    }
+  }
+
+  requestAnimationFrame(step);
+};
+
+// setInterval(moveNPCs, 3000);
+
+function calculateDistance(x1, y1, x2, y2) 
+{
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    return Math.sqrt(dx * dx + dy * dy);
+}
+
+function followPath(path, speed) {
+    let currentIndex = 0;
+    const element = document.getElementById("id1"); // Das Element, das dem Pfad folgen soll
+
+    function moveElement() {
+        if (currentIndex < path.length ) {
+            const currentX = parseFloat(element.getAttribute('cx'));
+            const currentY = parseFloat(element.getAttribute('cy'));
+            const targetX = path[currentIndex].x;
+            const targetY = path[currentIndex].y;
+            const dx = targetX - currentX;
+            const dy = targetY - currentY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance <= speed) {
+                // Das Element Ziel erreicht
+                currentIndex++;
+            } else {
+                const angle = Math.atan2(dy, dx);
+                const newX = currentX + Math.cos(angle) * speed;
+                const newY = currentY + Math.sin(angle) * speed;
+                element.setAttribute('cx', newX);
+                element.setAttribute('cy', newY);
+            }
+        } else {
+            // Das Element hat alle Ziele erreicht und bleibt stehen
+            currentIndex = 0;
+        }
+        // Nach jedem Schritt erneut bewegen
+        requestAnimationFrame(moveElement);
+    }
+    moveElement();
+};
+const path = [{ x: 72, y: 264 },{ x: 120, y: 264 },{ x: 120, y: 313},{ x: 72, y: 313}], speed = 1;
+followPath(path, speed);
+
+    // Initialisieren der Spielerdaten
+    let playerData = {
+      currentLevel: 1,
+      cEnergy: 0,
+    };
+    
+    // Save-Funktion
+    function saveGame() {
+      localStorage.setItem('playerData', JSON.stringify(playerData));
+      console.log('saveGame()'+playerData)
+    }
+    
+    // Load-Funktion
+    function loadGame() {
+      const savedData = localStorage.getItem('playerData');
+      if (savedData) {
+        playerData = JSON.parse(savedData);
+        // Aktualisieren Sie die Anzeige gemäß den geladenen Daten
+        updateCurrentLevel();
+        updatecEnergy();
+        return console.log(playerData);
+      }
+    }
+    
+    // Beispiel für die Aktualisierung der Anzeige der aktuellen Energie
+    function updatecEnergy() {
+      const cEnergyElement = document.getElementById('cEnergy');
+      cEnergyElement.textContent = 'Energie: ' + playerData.cEnergy;
+    }
+    
+    // Beispiel für die Aktualisierung der Anzeige des aktuellen Levels
+    function updateCurrentLevel() {
+      const currentLevelElement = document.getElementById('currentLevel');
+      currentLevelElement.textContent = 'Level: ' + playerData.currentLevel;
+    }
+    
+    // Beispiel: Der Spieler erhält Energie, wenn er Ressourcen sammelt
+    function collectResource(resourceType, amount) {
+      if (resourceType === 'energy') {
+        playerData.cEnergy += amount;
+        updatecEnergy();
+        saveGame(); // Speichern Sie das Spiel nach jeder Änderung
+      }
+    }
+    
+    // Beispiel: Der Spieler levelt auf
+    function levelUp() {
+      playerData.currentLevel += 1;
+      updateCurrentLevel();
+      saveGame(); // Speichern Sie das Spiel nach jeder Änderung
+    }
+    
+    // Beispiel: Starten Sie das Spiel und laden Sie den Spielerstand
+    function startGame() {
+      loadGame(); // Laden Sie den Spielerstand zu Beginn des Spiels
+      console.log('loadGame()')
+    }
+    
+    // Rufen Sie startGame() auf, um das Spiel zu starten und den Spielerstand zu laden.
+    //startGame()
+
+    // Save-Funktion
+    function saveGameToURL() {
+      const serializedData = /*btoa*/(JSON.stringify([playerData]));
+      const url = new URL(window.location);
+      url.searchParams.set('data', serializedData);
+      window.history.pushState({}, '', url);
+    }
+    
+    // Load-Funktion
+    function loadGameFromURL() {
+      const url = new URL(window.location);
+      const serializedData = url.searchParams.get('data');
+      if (serializedData) {
+        playerData = JSON.parse(/*atob*/(serializedData));
+        // Aktualisieren Sie die Anzeige und das Spiel gemäß den geladenen Daten
+        updateCurrentLevel();
+        updatecEnergy();
+      }
+    }
+
+setInterval(collectressAutomatically, 1000);
+setInterval(updateTimer, 1000);
+setInterval(moveNPCs, 3000);
+
+    // Save-Funktion
+    function saveGame() 
+    {
+      localStorage.setItem('playerData', JSON.stringify(playerData));
+      console.log('Spielstand wurde gespeichert.');
+    }
+    
+    // Load-Funktion
+    function loadGame() 
+    {
+      const savedData = localStorage.getItem('playerData');
+      if (savedData) {
+        playerData = JSON.parse(savedData);
+        // Aktualisieren Sie die Anzeige gemäß den geladenen Daten
+        updateCurrentLevel();
+        updateScore();
+        console.log('Spielstand wurde geladen.');
+      } else {
+        console.log('Es gibt keinen gespeicherten Spielstand.');
+      }
+    }
+    
+    // Beispiel für die Aktualisierung der Anzeige des aktuellen Levels
+    function updateCurrentLevel() 
+    {
+      const currentLevelElement = document.getElementById('currentLevel'); // Passen Sie die ID entsprechend Ihrer HTML-Struktur an
+      currentLevelElement.textContent = 'Aktuelles Level: ' + playerData.currentLevel;
+    }
+    
+    // Beispiel für die Aktualisierung der Anzeige des Punktestands
+    function updateScore() 
+    {
+      const scoreElement = document.getElementById('score'); // Passen Sie die ID entsprechend Ihrer HTML-Struktur an
+      scoreElement.textContent = 'Punktestand: ' + playerData.score;
+    }
+    </script>
+</body>
+</html>
