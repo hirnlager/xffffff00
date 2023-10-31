@@ -1,4 +1,4 @@
-xffffff00 ist ein browsergame
+xffffff00 ist ein auf html,css,svg,vanilla javascript basierendes browsergame
 
 ziel ein prototyp mit rolling update:
 
